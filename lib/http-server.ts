@@ -7,14 +7,23 @@ const log = debug('firebase-server');
 
 export function HttpServer(port: number, address: undefined, db: firebase.database.Database) {
 	function writeResponse(response: http.ServerResponse, payload: object | null) {
-		response.writeHead(200, { 'Content-Type': 'application/json' });
+		response.writeHead(200, { 'Content-Type': 'application/json', "Access-Control-Allow-Origin": "*" });
 		response.write(JSON.stringify(payload));
 		response.end();
 	}
 
 	function handleReadRequest(request: http.IncomingMessage, response: http.ServerResponse, path: string) {
+		let query = url.parse(request.url!, true).query;
 		db.ref(path).once('value').then((snapshot) => {
-			writeResponse(response, snapshot.val() || {});
+			let data = snapshot.val();
+			if (data && query.shallow === "true") {
+				Object.keys(data).forEach(key => {
+					if (typeof data[key] === "object") {
+						data[key] = true;
+					}
+				});
+			}
+			writeResponse(response, data || {});
 		});
 	}
 
